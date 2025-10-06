@@ -5,9 +5,15 @@ import '../widgets/gpa_card.dart';
 import '../widgets/grade_point_table.dart';
 import '../widgets/course_input_row.dart';
 
+/// Main page widget for the GPA Calculator functionality
+/// Provides a complete interface for calculating GPA with course inputs
 class GPACalculatorPage extends StatelessWidget {
   const GPACalculatorPage({super.key});
 
+  /// Builds the main UI for the GPA calculator page
+  /// Creates a ChangeNotifierProvider for state management and builds the complete UI
+  /// @param context The build context for the widget
+  /// @return A Scaffold containing the complete GPA calculator interface
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -66,6 +72,10 @@ class GPACalculatorPage extends StatelessWidget {
     );
   }
   
+  /// Builds the current GPA display section
+  /// Shows the current GPA value in a card format with debug information
+  /// @param controller The GPA controller instance for accessing current GPA data
+  /// @return A Column widget containing the GPA display and debug info
   Widget _buildCurrentGPASection(GPAController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,6 +106,10 @@ class GPACalculatorPage extends StatelessWidget {
     );
   }
   
+  /// Builds the expandable GPA explanation section
+  /// Creates a collapsible container with GPA calculation formula and grade point table
+  /// @param controller The GPA controller instance for managing explanation visibility
+  /// @return A Container widget with expandable GPA explanation content
   Widget _buildGPAExplanationSection(GPAController controller) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -203,6 +217,10 @@ class GPACalculatorPage extends StatelessWidget {
     );
   }
   
+  /// Builds the course details input section
+  /// Creates a table-like interface for entering grades and credit hours
+  /// @param controller The GPA controller instance for accessing course data
+  /// @return A Column widget containing course input headers and input rows
   Widget _buildCourseDetailsSection(GPAController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,6 +280,10 @@ class GPACalculatorPage extends StatelessWidget {
     );
   }
   
+  /// Builds the "Add New Subject" button
+  /// Creates a centered text button that adds a new course input row
+  /// @param controller The GPA controller instance for adding new courses
+  /// @return A Center widget containing a TextButton for adding courses
   Widget _buildAddNewSubjectButton(GPAController controller) {
     return Center(
       child: TextButton(
@@ -278,6 +300,11 @@ class GPACalculatorPage extends StatelessWidget {
     );
   }
   
+  /// Builds the "Calculate GPA" button
+  /// Creates a styled elevated button that triggers GPA calculation
+  /// @param controller The GPA controller instance for calculation
+  /// @param context The build context for showing result dialog
+  /// @return A Center widget containing an ElevatedButton for GPA calculation
   Widget _buildCalculateGPAButton(GPAController controller, BuildContext context) {
     return Center(
       child: ElevatedButton(
@@ -301,6 +328,10 @@ class GPACalculatorPage extends StatelessWidget {
     );
   }
   
+  /// Handles the GPA calculation process and shows result dialog
+  /// Triggers the calculation in the controller and displays the result in a dialog
+  /// @param controller The GPA controller instance for calculation
+  /// @param context The build context for showing the result dialog
   void _calculateGPA(GPAController controller, BuildContext context) {
     controller.calculateGPA();
     
