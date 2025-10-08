@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/gpa_controller.dart';
+import '../../services/toast_service.dart';
 import '../widgets/gpa_card.dart';
 import '../widgets/grade_point_table.dart';
 import '../widgets/course_input_row.dart';
@@ -225,13 +226,26 @@ class GPACalculatorPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Course Details',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+        Row(
+          children: [
+            const Text(
+              'Course Details',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${controller.courses.length}/7 subjects',
+              style: TextStyle(
+                fontSize: 14,
+                color: controller.isMaxCoursesReached ? Colors.orange : Colors.grey,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
         
         const SizedBox(height: 16),
@@ -282,20 +296,37 @@ class GPACalculatorPage extends StatelessWidget {
   
   /// Builds the "Add New Subject" button
   /// Creates a centered text button that adds a new course input row
+  /// Button is disabled when maximum course limit (7) is reached
   /// @param controller The GPA controller instance for adding new courses
   /// @return A Center widget containing a TextButton for adding courses
   Widget _buildAddNewSubjectButton(GPAController controller) {
     return Center(
-      child: TextButton(
-        onPressed: () => controller.addCourse(),
-        child: const Text(
-          'Add New Subject',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
+      child: Column(
+        children: [
+          TextButton(
+            onPressed: controller.isMaxCoursesReached ? null : () => controller.addCourse(),
+            child: Text(
+              controller.isMaxCoursesReached ? 'Maximum 7 subjects reached' : 'Add New Subject',
+              style: TextStyle(
+                fontSize: 16,
+                color: controller.isMaxCoursesReached ? Colors.grey : Colors.black87,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-        ),
+          if (controller.isMaxCoursesReached)
+            const Padding(
+              padding: EdgeInsets.only(top: 8.0),
+              child: Text(
+                'You can add up to 7 subjects for GPA calculation',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -328,33 +359,17 @@ class GPACalculatorPage extends StatelessWidget {
     );
   }
   
-  /// Handles the GPA calculation process and shows result dialog
-  /// Triggers the calculation in the controller and displays the result in a dialog
+  /// Handles the GPA calculation process and shows toast notification
+  /// Triggers the calculation in the controller and displays the result as a toast
   /// @param controller The GPA controller instance for calculation
-  /// @param context The build context for showing the result dialog
+  /// @param context The build context for showing the toast notification
   void _calculateGPA(GPAController controller, BuildContext context) {
     controller.calculateGPA();
     
-    // Show result dialog
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('GPA Calculation Result'),
-          content: Text(
-            'New GPA: ${controller.gpaService.currentGPA.toStringAsFixed(2)}',
-            style: const TextStyle(fontSize: 16),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
+    // Show toast notification with GPA result
+    ToastService.showGPACalculation(
+      context,
+      gpa: controller.gpaService.currentGPA,
     );
   }
 }

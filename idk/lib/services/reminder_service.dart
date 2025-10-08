@@ -1,6 +1,9 @@
+import 'package:flutter/material.dart';
 import '../models/calendar_event.dart';
 import '../models/notification_model.dart';
 import 'notification_service.dart';
+import 'toast_service.dart';
+import 'enhanced_notification_service.dart';
 
 class ReminderService {
   static final ReminderService _instance = ReminderService._internal();
@@ -8,6 +11,7 @@ class ReminderService {
   ReminderService._internal();
 
   final NotificationService _notificationService = NotificationService();
+  final EnhancedNotificationService _enhancedService = EnhancedNotificationService();
 
   Future<bool> scheduleEventReminder(CalendarEvent event) async {
     if (!event.reminderEnabled) {
@@ -160,5 +164,38 @@ class ReminderService {
 
   List<int> getAvailableReminderDays() {
     return [1, 2, 3, 7, 14, 30]; // 1 day, 2 days, 3 days, 1 week, 2 weeks, 1 month
+  }
+
+  /// Shows a toast notification for a reminder
+  /// This method should be called when a reminder is triggered
+  /// @param context The build context
+  /// @param event The calendar event that triggered the reminder
+  void showReminderToast(BuildContext context, CalendarEvent event) {
+    if (event.type == "Reminder") {
+      ToastService.showReminder(
+        context,
+        title: event.title,
+        description: "Time for your reminder!",
+      );
+    } else {
+      ToastService.showClassReminder(
+        context,
+        className: event.title,
+        time: "${event.date.hour.toString().padLeft(2, '0')}:${event.date.minute.toString().padLeft(2, '0')}",
+        location: "Check your schedule",
+      );
+    }
+  }
+
+  /// Creates a test reminder that triggers immediately
+  /// @param context The build context
+  /// @param title The reminder title
+  /// @param description The reminder description
+  void showTestReminder(BuildContext context, String title, String description) {
+    ToastService.showReminder(
+      context,
+      title: title,
+      description: description,
+    );
   }
 }

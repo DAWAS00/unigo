@@ -174,6 +174,7 @@ class _HomePageState extends State<HomePage> {
       }).toList(),
     );
   }
+
 }
 
 class _StatCard extends StatelessWidget {

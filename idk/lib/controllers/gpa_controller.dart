@@ -10,56 +10,10 @@ class GPAController extends ChangeNotifier {
   bool _showExplanation = false;
 
   /// Constructor that initializes the GPA controller
-  /// Sets up sample courses and calculates initial GPA for demonstration purposes
+  /// Starts with one empty course input for user to begin entering data
   GPAController() {
-    // Add some sample courses for demonstration
-    _addSampleCourses();
-    // Calculate initial GPA with sample data
-    _calculateInitialGPA();
-  }
-
-  /// Private method that adds sample courses to the calculator for demonstration
-  /// Creates CourseInput objects with predefined grades and credit hours
-  /// This helps users understand how the calculator works with example data
-  void _addSampleCourses() {
-    // Add a few sample courses to make the calculator more useful
-    final sampleCourses = [
-      {"grade": "A", "credits": "3"},
-      {"grade": "B+", "credits": "4"},
-      {"grade": "A-", "credits": "3"},
-    ];
-    
-    for (var course in sampleCourses) {
-      final courseInput = CourseInput();
-      courseInput.gradeController.text = course["grade"]!;
-      courseInput.creditHoursController.text = course["credits"]!;
-      _courses.add(courseInput);
-    }
-  }
-
-  /// Private method that calculates the initial GPA using sample course data
-  /// Clears existing courses, processes all course inputs, and calculates GPA
-  /// This method is called during initialization to show a working example
-  void _calculateInitialGPA() {
-    // Calculate GPA with the sample courses
-    _gpaService.clearCourses();
-    
-    for (CourseInput course in _courses) {
-      String grade = course.gradeController.text.trim().toUpperCase();
-      String creditHoursText = course.creditHoursController.text.trim();
-      
-      if (grade.isNotEmpty && creditHoursText.isNotEmpty) {
-        double gradePoint = _gpaService.getGradePoint(grade);
-        double creditHours = double.tryParse(creditHoursText) ?? 0;
-        
-        if (gradePoint >= 0 && creditHours > 0) {
-          _gpaService.addCourse(CourseGrade.fromInput(grade, creditHours, gradePoint));
-        }
-      }
-    }
-    
-    _gpaService.calculateGPA();
-    notifyListeners(); // Ensure UI updates
+    // Start with one empty course input
+    // No sample courses added by default
   }
 
   /// Getter that provides access to the GPA service instance
@@ -73,6 +27,10 @@ class GPAController extends ChangeNotifier {
   /// Getter that returns the current state of the explanation visibility
   /// Used to control whether the GPA explanation section is expanded
   bool get showExplanation => _showExplanation;
+  
+  /// Getter that checks if the maximum course limit has been reached
+  /// Returns true when 7 courses have been added (maximum allowed)
+  bool get isMaxCoursesReached => _courses.length >= 7;
 
   /// Toggles the visibility of the GPA explanation section
   /// Changes the _showExplanation state and notifies listeners for UI updates
@@ -83,9 +41,12 @@ class GPAController extends ChangeNotifier {
 
   /// Adds a new empty course input to the courses list
   /// Creates a new CourseInput object and notifies listeners for UI updates
+  /// Maximum limit of 7 courses to prevent excessive calculations
   void addCourse() {
-    _courses.add(CourseInput());
-    notifyListeners();
+    if (_courses.length < 7) {
+      _courses.add(CourseInput());
+      notifyListeners();
+    }
   }
 
   /// Removes a course input from the courses list at the specified index

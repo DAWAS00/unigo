@@ -2,6 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/calendar_controller.dart';
+import '../../models/calendar_event.dart';
+import '../../services/toast_service.dart';
+import '../../services/enhanced_notification_service.dart';
 
 class CalendarPage extends StatelessWidget {
   const CalendarPage({super.key});
@@ -444,25 +447,104 @@ List<Widget> _buildEventCards(CalendarController controller) {
 List<Widget> _buildReminderCards(CalendarController controller, BuildContext context) {
   final reminders = controller.events.where((e) => e.type == "Reminder").toList();
 
-  if (reminders.isEmpty) {
     return [
-      const Padding(
-        padding: EdgeInsets.only(left: 6),
-        child: Text(
-          "No reminders yet.",
+    // Quick Add Reminder Section
+    _glass(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.schedule, color: Colors.blue.shade600, size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  "Quick Add Reminder",
           style: TextStyle(
             fontFamily: "AnekTelugu",
-            fontSize: 13,
-            color: Colors.black54,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showQuickReminderDialog(controller, context),
+                    icon: const Icon(Icons.add_circle_outline, size: 18),
+                    label: const Text("Add Reminder"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showAddReminderDialog(controller, context),
+                    icon: const Icon(Icons.settings, size: 18),
+                    label: const Text("Advanced"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+    
+    const SizedBox(height: 16),
+    
+    // Reminders List
+    if (reminders.isEmpty) ...[
+      _glass(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Icon(Icons.notifications_none, size: 48, color: Colors.grey.shade400),
+              const SizedBox(height: 12),
+              const Text(
+                "No reminders yet",
+                style: TextStyle(
+                  fontFamily: "AnekTelugu",
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                "Add your first reminder to get started!",
+                style: TextStyle(
+                  fontFamily: "AnekTelugu",
+                  fontSize: 13,
+                  color: Colors.black38,
+                ),
+              ),
+            ],
           ),
         ),
       ),
-    ];
-  }
-
-
-   return [
+    ] else ...[
     ...reminders.map((e) {
+        final isToday = e.date.day == controller.today.day && 
+                       e.date.month == controller.today.month && 
+                       e.date.year == controller.today.year;
+        final isPast = e.date.isBefore(controller.today);
+        
       return Align(
         alignment: Alignment.centerLeft,
         child: ConstrainedBox(
@@ -470,63 +552,447 @@ List<Widget> _buildReminderCards(CalendarController controller, BuildContext con
           child: _glass(
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Text(
-                "• ${e.title} — ${CalendarController.months[e.date.month - 1]} ${e.date.day}",
-                style: const TextStyle(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: isPast ? Colors.grey : 
+                               isToday ? Colors.red : Colors.amber,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            e.title,
+                            style: TextStyle(
                   fontFamily: "AnekTelugu",
                   fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isPast ? Colors.grey : Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "${CalendarController.months[e.date.month - 1]} ${e.date.day}, ${e.date.year}",
+                            style: TextStyle(
+                              fontFamily: "AnekTelugu",
+                              fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                              color: isPast ? Colors.grey : Colors.black54,
+                            ),
+                          ),
+                          if (e.reminderEnabled) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              "🔔 Reminder enabled",
+                              style: TextStyle(
+                                fontFamily: "AnekTelugu",
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      onSelected: (value) => _handleReminderAction(value, e, controller, context),
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'toggle',
+                          child: Row(
+                            children: [
+                              Icon(Icons.notifications, size: 16),
+                              SizedBox(width: 8),
+                              Text('Toggle Reminder'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, size: 16),
+                              SizedBox(width: 8),
+                              Text('Edit'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, size: 16, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('Delete', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
+                        ),
+                      ],
+                      child: Icon(
+                        Icons.more_vert,
+                        size: 20,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
             ),
           ),
         ),
       );
     }),
-    const SizedBox(height: 10),
-    Align(
-      alignment: Alignment.centerLeft,
-      child: ElevatedButton.icon(
-        onPressed: () => _showAddReminderDialog(controller, context),
-        icon: const Icon(Icons.add),
-        label: const Text("Add Reminder"),
-      ),
-    ),
-    const SizedBox(height: 10),
-    Row(
+    ],
+    
+    const SizedBox(height: 16),
+    
+  ];
+}
+
+/// Shows a quick reminder dialog for easy reminder creation
+/// @param controller The calendar controller
+/// @param context The build context
+void _showQuickReminderDialog(CalendarController controller, BuildContext context) {
+  String reminderTitle = "";
+  DateTime? reminderDate;
+  TimeOfDay? reminderTime;
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text(
+              "Quick Add Reminder",
+              style: TextStyle(fontFamily: "AnekTelugu"),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: "Reminder Title",
+                    hintText: "e.g., Study for Math Exam",
+                  ),
+                  onChanged: (v) => reminderTitle = v,
+                ),
+                const SizedBox(height: 16),
+                
+                // Date Picker
+                ListTile(
+                  leading: const Icon(Icons.calendar_today),
+                  title: Text(
+                    reminderDate == null
+                        ? "Select Date"
+                        : "${CalendarController.months[reminderDate!.month - 1]} ${reminderDate!.day}, ${reminderDate!.year}",
+                  ),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() => reminderDate = picked);
+                    }
+                  },
+                ),
+                
+                // Time Picker
+                ListTile(
+                  leading: const Icon(Icons.access_time),
+                  title: Text(
+                    reminderTime == null
+                        ? "Select Time"
+                        : reminderTime!.format(context),
+                  ),
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                    );
+                    if (picked != null) {
+                      setState(() => reminderTime = picked);
+                    }
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  // Validate input
+                  if (reminderTitle.isEmpty) {
+                    ToastService.showError(
+                      context,
+                      title: 'Missing Title',
+                      description: 'Please enter a reminder title',
+                    );
+                    return;
+                  }
+                  
+                  if (reminderDate == null) {
+                    ToastService.showError(
+                      context,
+                      title: 'Missing Date',
+                      description: 'Please select a date for your reminder',
+                    );
+                    return;
+                  }
+                  
+                  if (reminderTime == null) {
+                    ToastService.showError(
+                      context,
+                      title: 'Missing Time',
+                      description: 'Please select a time for your reminder',
+                    );
+                    return;
+                  }
+                  
+                  // Combine date and time
+                  final reminderDateTime = DateTime(
+                    reminderDate!.year,
+                    reminderDate!.month,
+                    reminderDate!.day,
+                    reminderTime!.hour,
+                    reminderTime!.minute,
+                  );
+                  
+                  // Check if the reminder time is in the past
+                  if (reminderDateTime.isBefore(DateTime.now())) {
+                    ToastService.showError(
+                      context,
+                      title: 'Invalid Time',
+                      description: 'Please select a future date and time',
+                    );
+                    return;
+                  }
+                  
+                  try {
+                    // Add reminder with notification
+                    await controller.addEventWithReminder(
+                      title: reminderTitle,
+                      date: reminderDateTime,
+                      type: "Reminder",
+                      reminderEnabled: true,
+                      reminderDays: 0, // Immediate reminder
+                      reminderTime: "${reminderTime!.hour.toString().padLeft(2, '0')}:${reminderTime!.minute.toString().padLeft(2, '0')}",
+                    );
+                    
+                    // Show enhanced notification (both system and in-app)
+                    await EnhancedNotificationService().showReminderAddedNotification(
+                      context,
+                      reminderTitle,
+                      reminderDateTime,
+                    );
+                    
+                    Navigator.pop(context);
+                  } catch (e) {
+                    ToastService.showError(
+                      context,
+                      title: 'Error Adding Reminder',
+                      description: 'Please try again later',
+                    );
+                    print('Error adding reminder: $e');
+                  }
+                },
+                child: const Text("Add Reminder"),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+/// Handles reminder actions from the popup menu
+/// @param action The action to perform
+/// @param event The calendar event
+/// @param controller The calendar controller
+/// @param context The build context
+void _handleReminderAction(String action, CalendarEvent event, CalendarController controller, BuildContext context) {
+  switch (action) {
+    case 'toggle':
+      controller.toggleEventReminder(event);
+      ToastService.showInfo(
+        context,
+        title: 'Reminder ${event.reminderEnabled ? 'Disabled' : 'Enabled'}',
+        description: event.title,
+      );
+      break;
+    case 'edit':
+      _showEditReminderDialog(event, controller, context);
+      break;
+    case 'delete':
+      _showDeleteConfirmation(event, controller, context);
+      break;
+  }
+}
+
+/// Shows edit reminder dialog
+/// @param event The calendar event to edit
+/// @param controller The calendar controller
+/// @param context The build context
+void _showEditReminderDialog(CalendarEvent event, CalendarController controller, BuildContext context) {
+  String reminderTitle = event.title;
+  DateTime reminderDate = event.date;
+  TimeOfDay reminderTime = TimeOfDay.fromDateTime(event.date);
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text(
+              "Edit Reminder",
+              style: TextStyle(fontFamily: "AnekTelugu"),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () => controller.testNotification(),
-            icon: const Icon(Icons.notifications),
-            label: const Text("Instant Test"),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () => controller.createQuickTestEvent(),
-            icon: const Icon(Icons.timer),
-            label: const Text("10s Test"),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          ),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: "Reminder Title",
+                  ),
+                  controller: TextEditingController(text: reminderTitle),
+                  onChanged: (v) => reminderTitle = v,
+                ),
+                const SizedBox(height: 16),
+                
+                // Date Picker
+                ListTile(
+                  leading: const Icon(Icons.calendar_today),
+                  title: Text(
+                    "${CalendarController.months[reminderDate.month - 1]} ${reminderDate.day}, ${reminderDate.year}",
+                  ),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: reminderDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() => reminderDate = picked);
+                    }
+                  },
+                ),
+                
+                // Time Picker
+                ListTile(
+                  leading: const Icon(Icons.access_time),
+                  title: Text(reminderTime.format(context)),
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: reminderTime,
+                    );
+                    if (picked != null) {
+                      setState(() => reminderTime = picked);
+                    }
+                  },
         ),
       ],
     ),
-    const SizedBox(height: 10),
-    ElevatedButton.icon(
-      onPressed: () => Navigator.pushNamed(context, '/test-notifications'),
-      icon: const Icon(Icons.science),
-      label: const Text("🧪 Full Notification Tests"),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.purple,
-        foregroundColor: Colors.white,
-      ),
-    ),
-  ];
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (reminderTitle.isNotEmpty) {
+                    // Combine date and time
+                    final reminderDateTime = DateTime(
+                      reminderDate.year,
+                      reminderDate.month,
+                      reminderDate.day,
+                      reminderTime.hour,
+                      reminderTime.minute,
+                    );
+                    
+                    // Create updated event
+                    final updatedEvent = event.copyWith(
+                      title: reminderTitle,
+                      date: reminderDateTime,
+                    );
+                    
+                    // Update the event
+                    await controller.updateEventReminder(event, updatedEvent);
+                    
+                    // Show success toast
+                    ToastService.showSuccess(
+                      context,
+                      title: 'Reminder Updated!',
+                      description: reminderTitle,
+                    );
+                    
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text("Save Changes"),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
 }
+
+/// Shows delete confirmation dialog
+/// @param event The calendar event to delete
+/// @param controller The calendar controller
+/// @param context The build context
+void _showDeleteConfirmation(CalendarEvent event, CalendarController controller, BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text(
+          "Delete Reminder",
+          style: TextStyle(fontFamily: "AnekTelugu"),
+        ),
+        content: Text("Are you sure you want to delete '${event.title}'?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await controller.deleteEvent(event);
+              ToastService.showWarning(
+                context,
+                title: 'Reminder Deleted',
+                description: event.title,
+              );
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Delete"),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
 void _showAddReminderDialog(CalendarController controller, BuildContext context) {
   String reminderTitle = "";
@@ -565,7 +1031,7 @@ void _showAddReminderDialog(CalendarController controller, BuildContext context)
                       
                       // Event Type Selection
                       DropdownButtonFormField<String>(
-                        value: eventType,
+                        initialValue: eventType,
                         decoration: const InputDecoration(labelText: "Event Type"),
                         items: const [
                           DropdownMenuItem(value: "Event", child: Text("Event")),
@@ -609,7 +1075,7 @@ void _showAddReminderDialog(CalendarController controller, BuildContext context)
                         
                         // Reminder Days
                         DropdownButtonFormField<int>(
-                          value: reminderDays,
+                          initialValue: reminderDays,
                           decoration: const InputDecoration(labelText: "Remind me"),
                           items: controller.getAvailableReminderDays().map((days) {
                             String label = days == 1 ? "1 day before" : 
@@ -625,7 +1091,7 @@ void _showAddReminderDialog(CalendarController controller, BuildContext context)
                         
                         // Reminder Time
                         DropdownButtonFormField<String>(
-                          value: reminderTime,
+                          initialValue: reminderTime,
                           decoration: const InputDecoration(labelText: "Reminder Time"),
                           items: controller.getAvailableReminderTimes().map((time) {
                             return DropdownMenuItem(value: time, child: Text(time));

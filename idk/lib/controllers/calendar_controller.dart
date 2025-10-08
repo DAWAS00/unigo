@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/calendar_event.dart';
 import '../services/reminder_service.dart';
+import '../services/enhanced_notification_service.dart';
 import '../controllers/notification_controller.dart';
 
 class CalendarController extends ChangeNotifier {
@@ -13,9 +14,10 @@ class CalendarController extends ChangeNotifier {
   bool showFilterMenu = false;
 
   final ReminderService _reminderService = ReminderService();
+  final EnhancedNotificationService _enhancedService = EnhancedNotificationService();
   final NotificationController _notificationController = NotificationController();
 
-  List<CalendarEvent> _events = [];
+  final List<CalendarEvent> _events = [];
   List<CalendarEvent> get events => _events;
 
   static const months = [
@@ -122,22 +124,37 @@ class CalendarController extends ChangeNotifier {
     int reminderDays = 1,
     String reminderTime = "09:00",
   }) async {
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final event = CalendarEvent(
-      id: id,
-      title: title,
-      date: date,
-      type: type,
-      reminderEnabled: reminderEnabled,
-      reminderDays: reminderDays,
-      reminderTime: reminderTime,
-    );
+    try {
+      print('Adding event: $title at $date');
+      
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+      final event = CalendarEvent(
+        id: id,
+        title: title,
+        date: date,
+        type: type,
+        reminderEnabled: reminderEnabled,
+        reminderDays: reminderDays,
+        reminderTime: reminderTime,
+      );
 
-    _events.add(event);
-    notifyListeners();
-    
-    if (reminderEnabled) {
-      await _reminderService.scheduleEventReminder(event);
+      _events.add(event);
+      print('Event added to list. Total events: ${_events.length}');
+      notifyListeners();
+      
+      if (reminderEnabled) {
+        print('Scheduling reminder for: $title');
+        final success = await _reminderService.scheduleEventReminder(event);
+        print('Reminder scheduling result: $success');
+        
+        // Also schedule with enhanced service for better notifications
+        await _enhancedService.scheduleReminderNotification(event);
+      }
+      
+      print('Event added successfully!');
+    } catch (e) {
+      print('Error in addEventWithReminder: $e');
+      rethrow;
     }
   }
 
@@ -196,31 +213,4 @@ class CalendarController extends ChangeNotifier {
     );
   }
 
-  // Test method to show immediate notification
-  Future<void> testNotification() async {
-    await _notificationController.showInstantNotification(
-      "🧪 IMMEDIATE TEST",
-      "This notification appeared instantly! Your notification system is working! 🎉",
-    );
-  }
-
-  // Test method to create a quick test event
-  Future<void> createQuickTestEvent() async {
-    final quickTestEvent = CalendarEvent(
-      id: "quick_test_${DateTime.now().millisecondsSinceEpoch}",
-      title: "⚡ QUICK TEST - 30 seconds",
-      date: DateTime.now().add(const Duration(seconds: 30)),
-      type: "Event",
-      reminderEnabled: true,
-      reminderDays: 1,
-      reminderTime: DateTime.now().add(const Duration(seconds: 10)).toString().substring(11, 16), // 10 seconds from now
-    );
-    
-    _events.add(quickTestEvent);
-    notifyListeners();
-    
-    await _reminderService.scheduleEventReminder(quickTestEvent);
-    
-    print("⚡ Quick test event created! Notification should appear in 10 seconds.");
-  }
 }

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:toastification/toastification.dart';
 import 'views/pages/home_page.dart';
 import 'views/pages/courses_page.dart';
 import 'views/pages/calendar_page.dart';
@@ -13,7 +14,7 @@ import 'views/pages/inquiry_subjects_page.dart';
 import 'views/pages/academic_plan_page.dart';
 import 'views/pages/gpa_calculator_page.dart';
 import 'services/notification_service.dart';
-import 'test_notifications.dart';
+import 'services/enhanced_notification_service.dart';
 
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -25,8 +26,9 @@ void main() async {
   // Initialize timezone data
   tz.initializeTimeZones();
   
-  // Initialize notification service
+  // Initialize notification services
   await NotificationService().initialize();
+  await EnhancedNotificationService().initialize();
 
   
   runApp(const MyApp());
@@ -38,23 +40,26 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-  debugShowCheckedModeBanner: false,
-  title: 'University IT Student',
-  initialRoute: '/',
-  routes: {
-  '/': (context) => const MainScaffold(),
-  '/reserve-time': (context) => const ReserveTimePage(),
-  '/register-courses': (context) => const RegisterCoursesPage(),
-  '/withdraw-courses': (context) => const WithdrawCoursesPage(),
-  '/print-schedule': (context) => const PrintSchedulePage(),
-  '/inquiry-subjects': (context) => const InquirySubjectsPage(),
-  '/academic-plan': (context) => const AcademicPlanPage(),
-  '/gpa-calculator': (context) => const GPACalculatorPage(),
-  '/test-notifications': (context) => const NotificationTestWidget(),
-
-},
-);
-}
+      debugShowCheckedModeBanner: false,
+      title: 'University IT Student',
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const MainScaffold(),
+        '/reserve-time': (context) => const ReserveTimePage(),
+        '/register-courses': (context) => const RegisterCoursesPage(),
+        '/withdraw-courses': (context) => const WithdrawCoursesPage(),
+        '/print-schedule': (context) => const PrintSchedulePage(),
+        '/inquiry-subjects': (context) => const InquirySubjectsPage(),
+        '/academic-plan': (context) => const AcademicPlanPage(),
+        '/gpa-calculator': (context) => const GPACalculatorPage(),
+      },
+      builder: (context, child) {
+        return ToastificationWrapper(
+          child: child!,
+        );
+      },
+    );
+  }
 }
 
 class MainScaffold extends StatefulWidget {
